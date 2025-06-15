@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Juego de los 4 Caballos</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f5f5f5;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    .board {
+      display: grid;
+      border: 2px solid #333;
+    }
+    .square {
+      width: 70px;
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      cursor: pointer;
+    }
+    .white { background-color: #eee; }
+    .black { background-color: #666; color: white; }
+    .highlight { background-color: yellow !important; }
+    .knight-white { color: white; text-shadow: 1px 1px 2px black; }
+    .knight-black { color: black; }
+    select, button, input {
+      margin: 10px;
+      padding: 10px;
+      font-size: 16px;
+    }
+    #winMessage {
+      font-size: 20px;
+      color: green;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Juego de los 4 Caballos</h1>
+    <p>
+      Este es un juego de lógica para un solo jugador. <br>
+      Objetivo: Intercambiar las posiciones de los caballos blancos y negros usando solo movimientos de caballo de ajedrez.
+    </p>
+    <input type="text" id="playerName" placeholder="Nombre del jugador" />
+    <div id="boardContainer"></div>
+    <button onclick="initBoard()">Reiniciar Juego</button>
+    <button onclick="undoMove()">Deshacer Movimiento</button>
+    <button onclick="autoComplete()">Autocompletar</button>
+    <div id="winMessage"></div>
+  </div>
+
+  <script>
+    const pieces = {
+      white: '♞',
+      black: '♞'
+    };
+    let board = [];
+    const rows = 3;
+    const cols = 3;
+    let selected = null;
+    let startTime = null;
+    let moveCount = 0;
+    let history = [];
+
+    function initBoard() {
+      board = Array.from({ length: rows }, () => Array(cols).fill(null));
+      board[0][0] = 'white';
+      board[0][2] = 'white';
+      board[2][0] = 'black';
+      board[2][2] = 'black';
+      selected = null;
+      moveCount = 0;
+      history = [];
+      document.getElementById('winMessage').textContent = '';
+      startTime = new Date();
+      drawBoard();
+    }
+
+    function drawBoard() {
+      const container = document.getElementById('boardContainer');
+      container.innerHTML = '';
+      const grid = document.createElement('div');
+      grid.className = 'board';
+      grid.style.gridTemplateColumns = `repeat(${cols}, 70px)`;
+
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const square = document.createElement('div');
+          square.className = 'square ' + ((row + col) % 2 === 0 ? 'white' : 'black');
+          if (board[row][col]) {
+            const piece = document.createElement('span');
+            piece.textContent = pieces[board[row][col]];
+            piece.className = 'knight-' + board[row][col];
+            square.appendChild(piece);
+          }
+          square.onclick = () => handleClick(row, col, square);
+          grid.appendChild(square);
+        }
+      }
+      container.appendChild(grid);
+    }
+
+    function handleClick(row, col, square) {
+      if (selected) {
+        const [r, c] = selected;
+        const moves = getKnightMoves(r, c);
+        if (moves.some(([mr, mc]) => mr === row && mc === col)) {
+          history.push(JSON.parse(JSON.stringify(board)));
+          board[row][col] = board[r][c];
+          board[r][c] = null;
+          selected = null;
+          moveCount++;
+          drawBoard();
+          checkWin();
+        } else {
+          selected = null;
+          drawBoard();
+        }
+      } else if (board[row][col]) {
+        selected = [row, col];
+        drawBoard();
+        const moves = getKnightMoves(row, col);
+        highlightMoves(moves);
+      }
+    }
+
+    function undoMove() {
+      if (history.length > 0) {
+        board = history.pop();
+        moveCount = Math.max(0, moveCount - 1);
+        drawBoard();
+      }
+    }
+
+    function getKnightMoves(row, col) {
+      const offsets = [
+        [-2, -1], [-1, -2], [1, -2], [2, -1],
+        [2, 1], [1, 2], [-1, 2], [-2, 1]
+      ];
+      return offsets
+        .map(([dr, dc]) => [row + dr, col + dc])
+        .filter(([r, c]) => r >= 0 && r < rows && c >= 0 && c < cols && board[r][c] == null);
+    }
+
+    function highlightMoves(moves) {
+      const squares = document.querySelectorAll('.square');
+      moves.forEach(([r, c]) => {
+        const index = r * cols + c;
+        squares[index].classList.add('highlight');
+      });
+    }
+
+    function checkWin() {
+      if (board[0][0] === 'black' && board[0][2] === 'black' &&
+          board[2][0] === 'white' && board[2][2] === 'white') {
+        const endTime = new Date();
+        const seconds = Math.floor((endTime - startTime) / 1000);
+        const name = document.getElementById('playerName').value || 'Jugador';
+        document.getElementById('winMessage').textContent =
+          `¡Felicidades ${name}! Has completado el juego en ${seconds} segundos y ${moveCount} movimientos.`;
+      }
+    }
+
+    function autoComplete() {
+      board = [
+        ['black', null, 'black'],
+        [null, null, null],
+        ['white', null, 'white']
+      ];
+      moveCount = 0;
+      drawBoard();
+      checkWin();
+    }
+
+    initBoard();
+  </script>
+</body>
+</html>
